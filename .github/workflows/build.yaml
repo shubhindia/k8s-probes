@@ -29,6 +29,6 @@ jobs:
         with:
           context: ./python
           push: ${{ github.event_name != 'pull_request' }}
-          platforms: linux/amd64,linux/arm64,darwin/arm64
+          platforms: linux/amd64,linux/arm64
           tags: "python"
           labels: ${{ steps.meta.outputs.labels }}
