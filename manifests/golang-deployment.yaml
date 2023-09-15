@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golang-probe-tester
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: golang-probe-tester
+  template:
+    metadata:
+      labels:
+        app: golang-probe-tester
+    spec:
+      containers:
+      - name: golang-probe-tester
+        image: shubhindia/probe-tester:golang
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: golang-probe-tester
+spec:
+  selector:
+    app: golang-probe-tester
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: NodePort
