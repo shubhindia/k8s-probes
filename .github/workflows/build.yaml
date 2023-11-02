@@ -30,7 +30,7 @@ jobs:
             context: ./python
             push: ${{ github.event_name != 'pull_request' }}
             platforms: linux/amd64,linux/arm64
-            tags: "shubhindia/probe-tester:python"
+            tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}
         - name: Build and push (golang)
           uses: docker/build-push-action@v4
@@ -38,5 +38,5 @@ jobs:
             context: ./golang
             push: ${{ github.event_name != 'pull_request' }}
             platforms: linux/amd64,linux/arm64
-            tags: "shubhindia/probe-tester:python"
+            tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}
