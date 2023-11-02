@@ -8,6 +8,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/jellydator/ttlcache/v3"
+	cache "github.com/shubhindia/k8s-probes/golang/cache"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -41,6 +44,8 @@ var pongCounter = prometheus.NewCounter(
 	},
 )
 
+var Cache *ttlcache.Cache[string, string]
+
 func pong(w http.ResponseWriter, r *http.Request) {
 	pongCounter.Inc()
 	startTime := time.Now()
@@ -63,6 +68,43 @@ func pong(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResp)
 }
 
+// cacheStatus func either returns the value from cache or stores the value in cache
+func cacheStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	cacheId := r.URL.Query().Get("id")
+	var resp map[string]string
+	switch r.Method {
+	case "GET":
+		retrieved := Cache.Get(cacheId)
+
+		if retrieved == nil {
+			resp = map[string]string{
+				"message": fmt.Sprintf("Cache miss for %s", cacheId),
+			}
+		} else {
+			resp = map[string]string{
+				"message": fmt.Sprintf("Cache hit for %s", cacheId),
+			}
+		}
+
+	case "POST":
+		Cache.Set(cacheId, cacheId, ttlcache.DefaultTTL)
+		resp = map[string]string{
+			"message": fmt.Sprintf("Cache set for %s", cacheId),
+		}
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	response, err := json.Marshal(resp)
+	if err != nil {
+		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+	}
+	w.Write(response)
+
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	hostname, _ := os.Hostname()
@@ -81,6 +123,7 @@ func handleRequests() {
 	prometheus.MustRegister(pongCounter, requestsTotal, errorsTotal, requestDuration)
 	http.HandleFunc("/healthz", homePage)
 	http.HandleFunc("/ping", pong)
+	http.HandleFunc("/ping/cache", cacheStatus)
 	http.Handle("/metrics", promhttp.Handler())
 	fmt.Printf("listening on %v\n", httpPort)
 
@@ -95,5 +138,7 @@ func logRequest(handler http.Handler) http.Handler {
 }
 
 func main() {
+	Cache = cache.GetCache()
+	go Cache.Start()
 	handleRequests()
 }
